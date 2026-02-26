@@ -6,15 +6,16 @@ import {
     getProfile
 } from "../controllers/authController.js";
 import { protect } from "../middleware/authMiddleware.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 
 const router = express.Router();
 
 // PUBLIC ROUTES - No authentication needed
-router.post('/register', registerUser);        // ✅ registerUser(req, res)
-router.post('/login', loginUser);              // ✅ loginUser(req, res)
-router.post('/logout', logoutUser);            // ✅ logoutUser(req, res)
+router.post('/register', asyncHandler(registerUser));
+router.post('/login', asyncHandler(loginUser));
+router.post('/logout', asyncHandler(logoutUser));
 
 // PROTECTED ROUTE - Need authentication
-router.get('/profile', protect, getProfile);   // ✅ protect middleware then getProfile
+router.get('/profile', protect, asyncHandler(getProfile));
 
 export default router;

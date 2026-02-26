@@ -84,6 +84,24 @@ app.use((req, res, next) => {
   console.log(`📨 ${req.method} ${req.path}`);
   next();
 });
+// ============================================
+// DEBUGGING ROUTES - Add these temporarily
+// ============================================
+app.get('/api/debug', (req, res) => {
+    res.json({ 
+        message: 'Debug endpoint working',
+        time: new Date().toISOString(),
+        env: process.env.NODE_ENV
+    });
+});
+
+app.post('/api/debug/post', (req, res) => {
+    console.log('Debug POST body:', req.body);
+    res.json({ 
+        message: 'Debug POST working',
+        received: req.body 
+    });
+});
 
 // ============================================
 // ROUTES

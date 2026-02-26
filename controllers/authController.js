@@ -1,6 +1,5 @@
 import User from "../models/user.js";
 import jwt from "jsonwebtoken";
-import bcrypt from "bcryptjs";
 
 // Generate JWT Token
 const generateToken = (id) => {
@@ -12,12 +11,15 @@ const generateToken = (id) => {
 // @desc    Register a new user
 // @route   POST /api/auth/register
 export const registerUser = async (req, res) => {
+    console.log('📝 Register endpoint hit with body:', req.body);
+    
     try {
         const { name, email, password, phone, cnic, role } = req.body;
         
         // Validation
         if (!name || !email || !password || !phone) {
             return res.status(400).json({ 
+                success: false,
                 message: "Please provide all required fields: name, email, password, phone" 
             });
         }
@@ -25,12 +27,18 @@ export const registerUser = async (req, res) => {
         // Email format validation
         const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
         if (!emailRegex.test(email)) {
-            return res.status(400).json({ message: "Please provide a valid email" });
+            return res.status(400).json({ 
+                success: false,
+                message: "Please provide a valid email" 
+            });
         }
         
         // Password strength validation
         if (password.length < 6) {
-            return res.status(400).json({ message: "Password must be at least 6 characters" });
+            return res.status(400).json({ 
+                success: false,
+                message: "Password must be at least 6 characters" 
+            });
         }
         
         // Check if user exists
@@ -39,7 +47,10 @@ export const registerUser = async (req, res) => {
         });
         
         if (userExists) {
-            return res.status(400).json({ message: 'User already exists' });
+            return res.status(400).json({ 
+                success: false,
+                message: 'User already exists' 
+            });
         }
         
         // Create user
@@ -64,7 +75,8 @@ export const registerUser = async (req, res) => {
             path: '/'
         });
         
-        res.status(201).json({
+        // Send response
+        return res.status(201).json({
             success: true,
             data: {
                 _id: user._id,
@@ -77,7 +89,7 @@ export const registerUser = async (req, res) => {
         });
         
     } catch (error) {
-        console.error("Registration error:", error);
+        console.error("❌ Registration error:", error);
         
         // Handle mongoose validation errors
         if (error.name === 'ValidationError') {
@@ -98,7 +110,7 @@ export const registerUser = async (req, res) => {
             });
         }
         
-        res.status(500).json({ 
+        return res.status(500).json({ 
             success: false,
             message: error.message || "Registration failed" 
         });
@@ -108,6 +120,8 @@ export const registerUser = async (req, res) => {
 // @desc    Login user
 // @route   POST /api/auth/login
 export const loginUser = async (req, res) => {
+    console.log('🔐 Login endpoint hit with body:', req.body);
+    
     try {
         const { email, password } = req.body;
         
@@ -121,39 +135,60 @@ export const loginUser = async (req, res) => {
         // Check for user
         const user = await User.findOne({ email }).select('+password');
         
-        if (user && (await user.comparePassword(password))) {
-            const token = generateToken(user._id);
-            
-            res.cookie('token', token, {
-                httpOnly: true,
-                maxAge: 30 * 24 * 60 * 60 * 1000,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'lax',
-                path: '/'
-            });
-            
-            res.json({
-                success: true,
-                data: {
-                    _id: user._id,
-                    name: user.name,
-                    email: user.email,
-                    role: user.role,
-                    phone: user.phone,
-                    token
-                }
-            });
-        } else {
-            res.status(401).json({ 
+        if (!user) {
+            return res.status(401).json({ 
                 success: false,
                 message: 'Invalid email or password' 
             });
         }
+        
+        // Check password
+        const isPasswordMatch = await user.comparePassword(password);
+        if (!isPasswordMatch) {
+            return res.status(401).json({ 
+                success: false,
+                message: 'Invalid email or password' 
+            });
+        }
+        
+        // Check if user is active
+        if (!user.isActive) {
+            return res.status(401).json({ 
+                success: false,
+                message: 'Account is deactivated. Please contact admin.' 
+            });
+        }
+        
+        // Generate token
+        const token = generateToken(user._id);
+        
+        // Set cookie
+        res.cookie('token', token, {
+            httpOnly: true,
+            maxAge: 30 * 24 * 60 * 60 * 1000,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            path: '/'
+        });
+        
+        // Send response
+        return res.json({
+            success: true,
+            data: {
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                phone: user.phone,
+                token
+            }
+        });
+        
     } catch (error) {
-        console.error("Login error:", error);
-        res.status(500).json({ 
+        console.error("❌ Login error:", error);
+        return res.status(500).json({ 
             success: false,
-            message: error.message 
+            message: error.message || "Login failed" 
         });
     }
 };
@@ -161,12 +196,15 @@ export const loginUser = async (req, res) => {
 // @desc    Logout user
 // @route   POST /api/auth/logout
 export const logoutUser = async (req, res) => {
+    console.log('🚪 Logout endpoint hit');
+    
     res.cookie('token', '', {
         httpOnly: true,
         expires: new Date(0),
         path: '/'
     });
-    res.json({ 
+    
+    return res.json({ 
         success: true,
         message: 'Logged out successfully' 
     });
@@ -175,14 +213,26 @@ export const logoutUser = async (req, res) => {
 // @desc    Get current user profile
 // @route   GET /api/auth/profile
 export const getProfile = async (req, res) => {
+    console.log('👤 Profile endpoint hit for user:', req.user?._id);
+    
     try {
         const user = await User.findById(req.user._id).select('-password');
-        res.json({
+        
+        if (!user) {
+            return res.status(404).json({ 
+                success: false,
+                message: 'User not found' 
+            });
+        }
+        
+        return res.json({
             success: true,
             data: user
         });
+        
     } catch (error) {
-        res.status(500).json({ 
+        console.error("❌ Profile error:", error);
+        return res.status(500).json({ 
             success: false,
             message: error.message 
         });

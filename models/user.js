@@ -4,19 +4,21 @@ import bcrypt from "bcryptjs";
 const userSchema = new mongoose.Schema({
     name: {
         type: String,
-        required: true,
+        required: [true, 'Name is required'],
         trim: true
     },
     email: {
         type: String,
-        required: true,
+        required: [true, 'Email is required'],
         unique: true,
         lowercase: true,
-        trim: true
+        trim: true,
+        match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please provide a valid email']
     },
     password: {
         type: String,
-        required: true
+        required: [true, 'Password is required'],
+        minlength: [6, 'Password must be at least 6 characters']
     },
     role: {
         type: String,
@@ -25,12 +27,14 @@ const userSchema = new mongoose.Schema({
     },
     phone: {
         type: String,
-        required: true
+        required: [true, 'Phone number is required'],
+        trim: true
     },
     cnic: {
         type: String,
         sparse: true,
-        unique: true
+        unique: true,
+        trim: true
     },
     isActive: {
         type: Boolean,
@@ -46,16 +50,31 @@ const userSchema = new mongoose.Schema({
 
 // Hash password before saving
 userSchema.pre('save', async function(next) {
-    if (!this.isModified('password')) return next();
-    
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
+    try {
+        if (!this.isModified('password')) return next();
+        
+        console.log('🔐 Hashing password for user:', this.email);
+        const salt = await bcrypt.genSalt(10);
+        this.password = await bcrypt.hash(this.password, salt);
+        console.log('✅ Password hashed successfully');
+        next();
+    } catch (error) {
+        console.error('❌ Password hashing error:', error);
+        next(error);
+    }
 });
 
 // Compare password method
 userSchema.methods.comparePassword = async function(password) {
-    return await bcrypt.compare(password, this.password);
+    try {
+        console.log('🔍 Comparing password for user:', this.email);
+        const isMatch = await bcrypt.compare(password, this.password);
+        console.log('✅ Password match result:', isMatch);
+        return isMatch;
+    } catch (error) {
+        console.error('❌ Password comparison error:', error);
+        throw error;
+    }
 };
 
 const User = mongoose.model('User', userSchema);
