@@ -46,3 +46,4 @@ export const connectDB = async () => {
     throw error;
   }
 };
+//fixed 
