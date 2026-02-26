@@ -5,7 +5,7 @@ let cached = global.mongoose;
 if (!cached) {
   cached = global.mongoose = { conn: null, promise: null };
 }
-
+//
 export const connectDB = async () => {
   if (cached.conn) {
     console.log("✅ Using cached MongoDB connection");
@@ -19,11 +19,7 @@ export const connectDB = async () => {
     const opts = {
       serverSelectionTimeoutMS: 30000, // Keep this
       socketTimeoutMS: 45000,          // Keep this
-      // ❌ REMOVE these lines completely:
-      // bufferCommands: false,
-      // bufferMaxEntries: 0,
-      // useNewUrlParser: true,
-      // useUnifiedTopology: true
+   
     };
 
     cached.promise = mongoose.connect(process.env.MONGO_URI, opts)
@@ -46,4 +42,4 @@ export const connectDB = async () => {
     throw error;
   }
 };
-//fixed 
+//fixed  version of my app
