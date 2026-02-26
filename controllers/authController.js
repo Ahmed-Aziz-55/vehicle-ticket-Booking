@@ -11,7 +11,7 @@ const generateToken = (id) => {
 
 // @desc    Register a new user
 // @route   POST /api/auth/register
-export const registerUser = async (req, res) => {  // 👈 SIRF req, res do parameter
+export const registerUser = async (req, res) => {
     try {
         const { name, email, password, phone, cnic, role } = req.body;
         
@@ -20,6 +20,17 @@ export const registerUser = async (req, res) => {  // 👈 SIRF req, res do para
             return res.status(400).json({ 
                 message: "Please provide all required fields: name, email, password, phone" 
             });
+        }
+        
+        // Email format validation
+        const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({ message: "Please provide a valid email" });
+        }
+        
+        // Password strength validation
+        if (password.length < 6) {
+            return res.status(400).json({ message: "Password must be at least 6 characters" });
         }
         
         // Check if user exists
@@ -49,21 +60,46 @@ export const registerUser = async (req, res) => {  // 👈 SIRF req, res do para
             httpOnly: true,
             maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax'
+            sameSite: 'lax',
+            path: '/'
         });
         
         res.status(201).json({
-            _id: user._id,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            phone: user.phone,
-            token
+            success: true,
+            data: {
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                phone: user.phone,
+                token
+            }
         });
         
     } catch (error) {
         console.error("Registration error:", error);
+        
+        // Handle mongoose validation errors
+        if (error.name === 'ValidationError') {
+            const messages = Object.values(error.errors).map(val => val.message);
+            return res.status(400).json({ 
+                success: false,
+                message: 'Validation error', 
+                errors: messages 
+            });
+        }
+        
+        // Handle duplicate key error
+        if (error.code === 11000) {
+            const field = Object.keys(error.keyPattern)[0];
+            return res.status(400).json({ 
+                success: false,
+                message: `${field} already exists` 
+            });
+        }
+        
         res.status(500).json({ 
+            success: false,
             message: error.message || "Registration failed" 
         });
     }
@@ -77,6 +113,7 @@ export const loginUser = async (req, res) => {
         
         if (!email || !password) {
             return res.status(400).json({ 
+                success: false,
                 message: "Please provide email and password" 
             });
         }
@@ -91,23 +128,33 @@ export const loginUser = async (req, res) => {
                 httpOnly: true,
                 maxAge: 30 * 24 * 60 * 60 * 1000,
                 secure: process.env.NODE_ENV === 'production',
-                sameSite: 'lax'
+                sameSite: 'lax',
+                path: '/'
             });
             
             res.json({
-                _id: user._id,
-                name: user.name,
-                email: user.email,
-                role: user.role,
-                phone: user.phone,
-                token
+                success: true,
+                data: {
+                    _id: user._id,
+                    name: user.name,
+                    email: user.email,
+                    role: user.role,
+                    phone: user.phone,
+                    token
+                }
             });
         } else {
-            res.status(401).json({ message: 'Invalid email or password' });
+            res.status(401).json({ 
+                success: false,
+                message: 'Invalid email or password' 
+            });
         }
     } catch (error) {
         console.error("Login error:", error);
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ 
+            success: false,
+            message: error.message 
+        });
     }
 };
 
@@ -116,9 +163,13 @@ export const loginUser = async (req, res) => {
 export const logoutUser = async (req, res) => {
     res.cookie('token', '', {
         httpOnly: true,
-        expires: new Date(0)
+        expires: new Date(0),
+        path: '/'
     });
-    res.json({ message: 'Logged out successfully' });
+    res.json({ 
+        success: true,
+        message: 'Logged out successfully' 
+    });
 };
 
 // @desc    Get current user profile
@@ -126,8 +177,14 @@ export const logoutUser = async (req, res) => {
 export const getProfile = async (req, res) => {
     try {
         const user = await User.findById(req.user._id).select('-password');
-        res.json(user);
+        res.json({
+            success: true,
+            data: user
+        });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ 
+            success: false,
+            message: error.message 
+        });
     }
 };
