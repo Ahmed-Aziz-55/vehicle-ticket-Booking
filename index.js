@@ -40,26 +40,31 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // Middleware to ensure DB connection for each request (for Vercel)
-app.use(async (req, res, next) => {
-  try {
-    // Skip DB connection for health check and root routes
-    if (req.path === '/' || req.path === '/api/health') {
-      return next();
+app.use((req, res, next) => {
+
+  const connectDatabase = async () => {
+    try {
+
+      if (req.path === '/' || req.path === '/api/health') {
+        return next();
+      }
+
+      if (mongoose.connection.readyState !== 1) {
+        console.log('⏳ Connecting DB...');
+        await connectDB();
+      }
+
+      next();
+
+    } catch (error) {
+      console.error('DB middleware error:', error);
+      res.status(500).json({
+        message: "Database connection failed"
+      });
     }
-    
-    // Check if DB is connected
-    if (mongoose.connection.readyState !== 1) {
-      console.log('⏳ DB not connected, connecting now...');
-      await connectDB();
-    }
-    next();
-  } catch (error) {
-    console.error('❌ DB connection middleware error:', error);
-    res.status(500).json({ 
-      message: "Database connection failed", 
-      error: error.message 
-    });
-  }
+  };
+
+  connectDatabase();
 });
 
 // ============================================

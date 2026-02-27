@@ -3,10 +3,12 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 
 // Generate JWT Token
-const generateToken = (id) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET, {
-        expiresIn: '30d'
-    });
+export const generateToken = (id) => {
+    return jwt.sign(
+        { id },
+        process.env.JWT_SECRET,
+        { expiresIn: "30d" }
+    );
 };
 
 // @desc    Register a new user
