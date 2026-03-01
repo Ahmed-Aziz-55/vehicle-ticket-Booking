@@ -36,11 +36,11 @@ const vehicleSchema = new mongoose.Schema({
 });
 
 // Generate seat numbers based on configuration
-vehicleSchema.pre('save', function(next) {
+vehicleSchema.pre('save', function () {
     if (this.isModified('totalSeats')) {
         const frontCount = Math.ceil(this.totalSeats * 0.4); // 40% front seats
         const backCount = this.totalSeats - frontCount;
-        
+
         this.seatConfiguration = {
             frontSeats: {
                 count: frontCount,
@@ -52,7 +52,6 @@ vehicleSchema.pre('save', function(next) {
             }
         };
     }
-    next();
 });
 
 const Vehicle = mongoose.model('Vehicle', vehicleSchema);

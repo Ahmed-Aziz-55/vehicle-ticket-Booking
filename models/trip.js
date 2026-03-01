@@ -80,7 +80,7 @@ const tripSchema = new mongoose.Schema({
 });
 
 // Initialize available seats before saving
-tripSchema.pre('save', async function(next) {
+tripSchema.pre('save', async function () {
     if (this.isNew) {
         const vehicle = await mongoose.model('Vehicle').findById(this.vehicle);
         if (vehicle) {
@@ -90,7 +90,6 @@ tripSchema.pre('save', async function(next) {
             };
         }
     }
-    next();
 });
 
 const Trip = mongoose.model('Trip', tripSchema);

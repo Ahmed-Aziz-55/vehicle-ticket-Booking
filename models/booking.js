@@ -66,11 +66,10 @@ const bookingSchema = new mongoose.Schema({
 });
 
 // Generate ticket ID before saving
-bookingSchema.pre('save', async function(next) {
+bookingSchema.pre('save', async function () {
     if (this.isNew && !this.ticketId) {
         this.ticketId = await generateTicketId();
     }
-    next();
 });
 
 const Booking = mongoose.model('Booking', bookingSchema);
